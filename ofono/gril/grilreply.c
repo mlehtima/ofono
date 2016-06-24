@@ -40,6 +40,7 @@
 
 /* SETUP_DATA_CALL_PARAMS reply params */
 #define MIN_DATA_CALL_REPLY_SIZE 36
+#define DEFAULT_CALL_DNSES "8.8.8.8 8.8.4.4"
 
 /* TODO: move this to grilutil.c */
 void g_ril_reply_free_setup_data_call(struct reply_setup_data_call *reply)
@@ -185,10 +186,20 @@ struct reply_setup_data_call *g_ril_reply_parse_data_call(GRil *gril,
 		reply->gateways = NULL;
 
 	if (reply->gateways == NULL || (sizeof(reply->gateways) == 0)) {
-		ofono_error("%s: no gateways: %s", __func__, raw_gws);
-		OFONO_EINVAL(error);
-		goto error;
+		/* a hack for msm7x39 based devices */
+		if (reply->version == 6) {
+			ofono_info("%s: no gateways: %s", __func__, raw_gws);
+		} else {
+			ofono_error("%s: no gateways: %s", __func__, raw_gws);
+			OFONO_EINVAL(error);
+			goto error;
+		}
 	}
+
+	/* a hack for msm7x39 based devices */
+	/* Add default dnses if needed */
+	if (reply->version == 6 && !dnses)
+		dnses = g_strdup(DEFAULT_CALL_DNSES);
 
 	/* Split DNS addresses */
 	if (dnses)
